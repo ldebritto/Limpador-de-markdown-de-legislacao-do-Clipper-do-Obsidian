@@ -1,0 +1,6 @@
+node_modules/
+Exemplo.md
+Exemplo_processado.md
+test-*.ts
+*.log
+.DS_Store

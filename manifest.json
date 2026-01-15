@@ -1,0 +1,10 @@
+{
+	"id": "legislacao-limpa",
+	"name": "Legislação Limpa",
+	"version": "0.1.0",
+	"minAppVersion": "0.15.0",
+	"description": "Limpa e estrutura documentos de legislação brasileira clipados para o Obsidian",
+	"author": "Lucas",
+	"authorUrl": "",
+	"isDesktopOnly": false
+}
