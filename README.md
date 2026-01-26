@@ -1,6 +1,6 @@
 # Legislação Limpa - Plugin Obsidian
 
-Plugin para limpar e estruturar documentos de legislação brasileira clipados pelo Web Clipper do Obsidian.
+Plugin para limpar e estruturar documentos de legislação brasileira clipados pelo Web Clipper do Obsidian a partir do site do Planalto.
 
 
 ## Funcionalidades

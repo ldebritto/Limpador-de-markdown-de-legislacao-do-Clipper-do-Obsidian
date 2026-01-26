@@ -26,6 +26,13 @@ const DIVISOES: DivisaoConfig[] = [
 ];
 
 /**
+ * Regex para detectar se uma linha já é um heading processado
+ * Formato: # DIVISÃO X ou # DIVISÃO X - Nome
+ * Exemplo: "# LIVRO I - Das Obrigações", "## TÍTULO II", "### CAPÍTULO III - Dos Contratos"
+ */
+const JA_EH_HEADING = /^#{1,6}\s+(LIVRO|ANEXO|TÍTULO|CAPÍTULO|Seção|Subseção)\s+[IVXLCDM\d]+(\s*[-–—].*)?$/i;
+
+/**
  * Converte hierarquia em headings Markdown
  * Une o identificador (ex: "LIVRO I") com o nome na linha seguinte
  * Ignora divisões dentro de blocos de citação (>) pois são referências a outras leis
@@ -38,6 +45,14 @@ export function converterHierarquia(conteudo: string): string {
 	while (i < linhas.length) {
 		const linhaOriginal = linhas[i];
 		const linhaAtual = linhaOriginal.trim();
+
+		// Preserva headings já processados (ex: "# LIVRO I - Nome")
+		// Isso evita reprocessamento e mantém ajustes manuais
+		if (JA_EH_HEADING.test(linhaAtual)) {
+			resultado.push(linhaOriginal);
+			i++;
+			continue;
+		}
 
 		// Ignora linhas dentro de citação (começam com >)
 		// Estas são referências a outras leis, não divisões do documento atual

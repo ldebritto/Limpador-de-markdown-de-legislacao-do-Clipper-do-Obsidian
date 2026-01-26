@@ -72,7 +72,82 @@ export function gerarAliases(titulo: TituloNormativo): string[] {
 }
 
 /**
- * Processa o frontmatter do documento, adicionando aliases
+ * Extrai aliases existentes do frontmatter
+ * Suporta formatos: array YAML em múltiplas linhas ou inline
+ */
+function extrairAliasesExistentes(frontmatter: string): string[] {
+	const aliases: string[] = [];
+
+	// Formato de múltiplas linhas:
+	// aliases:
+	//   - "alias1"
+	//   - "alias2"
+	const multiLinhaMatch = frontmatter.match(/^aliases:\s*\n((?:\s+-\s*.+\n?)*)/m);
+	if (multiLinhaMatch) {
+		const linhas = multiLinhaMatch[1].split('\n');
+		for (const linha of linhas) {
+			const itemMatch = linha.match(/^\s+-\s*["']?([^"'\n]+)["']?\s*$/);
+			if (itemMatch) {
+				aliases.push(itemMatch[1].trim());
+			}
+		}
+		return aliases;
+	}
+
+	// Formato inline: aliases: ["alias1", "alias2"]
+	const inlineMatch = frontmatter.match(/^aliases:\s*\[([^\]]*)\]/m);
+	if (inlineMatch) {
+		const items = inlineMatch[1].split(',');
+		for (const item of items) {
+			const clean = item.trim().replace(/^["']|["']$/g, '');
+			if (clean) {
+				aliases.push(clean);
+			}
+		}
+	}
+
+	return aliases;
+}
+
+/**
+ * Remove o campo aliases existente do frontmatter
+ * Trata múltiplas linhas (array YAML) e formato inline
+ */
+function removerAliasesExistentes(frontmatter: string): string {
+	const linhas = frontmatter.split('\n');
+	const resultado: string[] = [];
+	let dentroDeAliases = false;
+
+	for (const linha of linhas) {
+		// Detecta início do campo aliases
+		if (/^aliases:/.test(linha)) {
+			dentroDeAliases = true;
+			// Se for formato inline (aliases: ["a", "b"]), remove só essa linha
+			if (/^aliases:\s*\[/.test(linha)) {
+				dentroDeAliases = false;
+			}
+			continue;
+		}
+
+		// Se estamos dentro do array de aliases, pular linhas indentadas (itens do array)
+		if (dentroDeAliases) {
+			// Linha indentada (item do array) - pular
+			if (/^\s+-/.test(linha) || /^\s+["']/.test(linha)) {
+				continue;
+			}
+			// Linha não indentada - fim do array aliases
+			dentroDeAliases = false;
+		}
+
+		resultado.push(linha);
+	}
+
+	return resultado.join('\n');
+}
+
+/**
+ * Processa o frontmatter do documento, adicionando ou mesclando aliases
+ * Aliases existentes são preservados; novos aliases são adicionados sem duplicatas
  */
 export function processarFrontmatter(conteudo: string): string {
 	// Verifica se tem frontmatter
@@ -90,22 +165,24 @@ export function processarFrontmatter(conteudo: string): string {
 		return conteudo;
 	}
 
-	const aliases = gerarAliases(titulo);
+	const novosAliases = gerarAliases(titulo);
+	const aliasesExistentes = extrairAliasesExistentes(frontmatterOriginal);
+
+	// Mescla aliases: existentes primeiro, depois novos (sem duplicatas)
+	const aliasesSet = new Set(aliasesExistentes);
+	for (const alias of novosAliases) {
+		aliasesSet.add(alias);
+	}
+	const aliasesMesclados = Array.from(aliasesSet);
 
 	// Formata aliases como array YAML
-	const aliasesYaml = `aliases:\n${aliases.map(a => `  - "${a}"`).join('\n')}`;
+	const aliasesYaml = `aliases:\n${aliasesMesclados.map(a => `  - "${a}"`).join('\n')}`;
 
-	// Verifica se já existe campo aliases
-	if (/^aliases:/m.test(frontmatterOriginal)) {
-		// Substitui aliases existente (usa [\s\S] em vez de . com flag s)
-		const novoFrontmatter = frontmatterOriginal.replace(
-			/^aliases:[\s\S]*?(?=\n\w|\n$)/m,
-			aliasesYaml
-		);
-		return conteudo.replace(frontmatterRegex, `---\n${novoFrontmatter}\n---`);
-	} else {
-		// Adiciona aliases ao final do frontmatter
-		const novoFrontmatter = `${frontmatterOriginal}\n${aliasesYaml}`;
-		return conteudo.replace(frontmatterRegex, `---\n${novoFrontmatter}\n---`);
-	}
+	// Remove aliases existentes e adiciona o novo bloco mesclado
+	const frontmatterSemAliases = removerAliasesExistentes(frontmatterOriginal);
+	const novoFrontmatter = frontmatterSemAliases.trim()
+		? `${frontmatterSemAliases}\n${aliasesYaml}`
+		: aliasesYaml;
+
+	return conteudo.replace(frontmatterRegex, `---\n${novoFrontmatter}\n---`);
 }
