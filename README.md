@@ -49,6 +49,33 @@ a) nas hipóteses previstas... ^x7y8z9
 
 Tabelas HTML e Markdown são preservadas intactas durante o processamento.
 
+### 6. Atualização de Legislação
+
+Permite atualizar uma legislação já processada com uma nova versão clipada do Planalto, preservando todos os links existentes:
+
+**Workflow:**
+1. Clipe a versão atualizada da lei usando o Obsidian Clipper
+2. Abra o arquivo clipado no Obsidian
+3. Execute: `Ctrl/Cmd + P` → "Atualizar legislação com nova versão"
+4. Selecione o arquivo existente para atualizar
+
+**O que acontece:**
+- **Backup automático**: Cria cópia do arquivo existente com timestamp (ex: `LC 227 - backup 2026-01-28 143022.md`)
+- **Reutiliza IDs**: Dispositivos existentes mantêm seus IDs de deeplink (preserva links de outras notas)
+- **Gera novos IDs**: Dispositivos novos recebem IDs únicos
+- **Preserva redações antigas**: Versões originais ficam em callouts `> [!note]- Redação original`
+- **Mantém aliases manuais**: Aliases personalizados do arquivo antigo são preservados
+
+**Exemplo de resultado:**
+```markdown
+> [!note]- Redação original
+> **Art. 5º** O IBS incidirá sobre... ^abc123
+
+**Art. 5º** O IBS incidirá sobre operações com bens e serviços... [(Redação dada pela LC 228/2026)] ^abc123
+```
+
+Os links existentes `[[LC 227#^abc123]]` continuam funcionando e apontam para a nova redação.
+
 ## Status do Projeto
 
 Esse projeto foi implementado usando Claude Code e se destina a uso pessoal. O código foi aberto para que todos usar, se a funcionalidade atual lhe bastar. A princípio, não pretendo implementar novas funcionalidades.
@@ -66,8 +93,16 @@ Esse projeto foi implementado usando Claude Code e se destina a uso pessoal. O c
 
 ### Uso
 
+#### Processar nova legislação:
 1. Abra um documento de legislação clipado
-2. Execute o comando: `Ctrl/Cmd + P` → "Processar documento de legislação"
+2. Execute: `Ctrl/Cmd + P` → "Processar documento de legislação"
+
+#### Atualizar legislação existente:
+1. Clipe a nova versão da lei usando Obsidian Clipper
+2. Abra o arquivo clipado
+3. Execute: `Ctrl/Cmd + P` → "Atualizar legislação com nova versão"
+4. Selecione o arquivo existente para atualizar
+5. O plugin criará um backup e atualizará o arquivo original
 
 ## Arquitetura
 
@@ -79,14 +114,19 @@ Esse projeto foi implementado usando Claude Code e se destina a uso pessoal. O c
 ├── main.js                # Plugin compilado (gerado pelo build)
 └── src/
     ├── main.ts            # Entry point do plugin
-    ├── processador.ts     # Classe orquestradora
+    ├── processador.ts     # Classe orquestradora (processamento inicial)
+    ├── atualizador.ts     # Atualização de legislação existente
     ├── types.ts           # Interfaces TypeScript
     ├── utils.ts           # Funções utilitárias (geração de IDs)
     ├── frontmatter.ts     # Parser de frontmatter e aliases
     ├── brasao.ts          # Remoção do brasão
     ├── tabelas.ts         # Proteção de tabelas
     ├── hierarquia.ts      # Conversão de hierarquia em headings
-    └── deeplinks.ts       # Geração de IDs para deeplinks
+    ├── deeplinks.ts       # Geração de IDs para deeplinks
+    ├── artigos.ts         # Normalização de artigos
+    ├── normalizacao.ts    # Correção de problemas de formatação
+    ├── duplicatas.ts      # Processamento de redações duplicadas
+    └── extrator-ids.ts    # Extração de IDs de documentos existentes
 ```
 
 ## Ordem de Processamento

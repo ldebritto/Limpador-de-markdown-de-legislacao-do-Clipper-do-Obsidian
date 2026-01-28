@@ -32,6 +32,26 @@ class SeletorArquivoModal extends FuzzySuggestModal<TFile> {
 export default class LegislacaoLimpaPlugin extends Plugin {
 	private processador: ProcessadorLegislacao;
 
+	/**
+	 * Cria um backup do arquivo antes de atualizá-lo
+	 * Nomeia o backup como: "nome do arquivo - backup YYYY-MM-DD HHmmss.md"
+	 */
+	private async criarBackup(arquivo: TFile): Promise<TFile> {
+		const timestamp = new Date()
+			.toISOString()
+			.replace(/T/, ' ')
+			.replace(/\..+/, '')
+			.replace(/:/g, '');
+
+		const nomeBackup = `${arquivo.basename} - backup ${timestamp}.md`;
+		const pastaDestino = arquivo.parent?.path || '';
+		const caminhoBackup = pastaDestino ? `${pastaDestino}/${nomeBackup}` : nomeBackup;
+
+		const arquivoBackup = await this.app.vault.copy(arquivo, caminhoBackup);
+
+		return arquivoBackup;
+	}
+
 	async onload() {
 		this.processador = new ProcessadorLegislacao();
 
@@ -86,21 +106,24 @@ export default class LegislacaoLimpaPlugin extends Plugin {
 						const conteudoNovo = editor.getValue();
 						const conteudoExistente = await this.app.vault.read(arquivoExistente);
 
+						// 1. Cria backup do arquivo existente
+						const arquivoBackup = await this.criarBackup(arquivoExistente);
+
+						// 2. Atualiza a legislação
 						const resultado = atualizarLegislacao(conteudoExistente, conteudoNovo);
 
-						// Atualiza o arquivo existente com o conteúdo mesclado
+						// 3. Atualiza o arquivo existente com o conteúdo mesclado
 						await this.app.vault.modify(arquivoExistente, resultado.conteudo);
 
 						// Mostra estatísticas
 						new Notice(
 							`Legislação atualizada!\n` +
+							`Backup criado: ${arquivoBackup.basename}\n` +
 							`IDs reutilizados: ${resultado.idsReutilizados}\n` +
 							`IDs novos: ${resultado.idsNovos}\n` +
 							`Duplicatas: ${resultado.duplicatasProcessadas}`
 						);
 
-						// Pergunta se quer deletar o arquivo novo (clipado)
-						// Por enquanto, apenas avisa
 						new Notice(`Arquivo atualizado: ${arquivoExistente.basename}`, 5000);
 
 					} catch (erro) {
