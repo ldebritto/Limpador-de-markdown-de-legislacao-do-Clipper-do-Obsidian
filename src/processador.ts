@@ -5,6 +5,7 @@ import { protegerTabelas, restaurarTabelas } from './tabelas';
 import { converterHierarquia } from './hierarquia';
 import { removerIndentacao } from './remover-indentacao';
 import { converterNegrito } from './converter-negrito';
+import { normalizarArtigos } from './normalizar-artigos';
 import { agruparRedacoesRevogadas } from './agrupar-revogadas';
 
 /**
@@ -34,16 +35,19 @@ export class ProcessadorLegislacao {
 		// Etapa 4: Converter hierarquia em negrito para texto normal
 		resultado = this.converterNegritoDoc(resultado);
 
-		// Etapa 5: Remover indentação indesejada
+		// Etapa 5: Normalizar formatação de artigos (negrito em pontos, espaçamento)
+		resultado = this.normalizarArtigosDoc(resultado);
+
+		// Etapa 6: Remover indentação indesejada
 		resultado = this.removerIndentacaoDoc(resultado);
 
-		// Etapa 6: Converter hierarquia em headings
+		// Etapa 7: Converter hierarquia em headings
 		resultado = this.converterHierarquiaDoc(resultado);
 
-		// Etapa 7: Restaurar tabelas
+		// Etapa 8: Restaurar tabelas
 		resultado = this.restaurarTabelasDoc(resultado);
 
-		// Etapa 8: Agrupar redações revogadas em callouts retraídos
+		// Etapa 9: Agrupar redações revogadas em callouts retraídos
 		resultado = this.agruparRevogadasDoc(resultado);
 
 		return resultado;
@@ -84,6 +88,13 @@ export class ProcessadorLegislacao {
 	 */
 	private converterNegritoDoc(conteudo: string): string {
 		return converterNegrito(conteudo);
+	}
+
+	/**
+	 * Normaliza formatação de artigos (negrito em pontos, espaçamento)
+	 */
+	private normalizarArtigosDoc(conteudo: string): string {
+		return normalizarArtigos(conteudo);
 	}
 
 	/**

@@ -19,10 +19,11 @@ A ordem em `processador.ts` é intencional:
 2. Proteger tabelas (placeholder)
 3. Processar frontmatter
 4. **Converter negrito** (remove `**TÍTULO I**` → `TÍTULO I`)
-5. **Remover indentação** (remove espaços indesejados)
-6. Converter hierarquia (transforma em headings)
-7. Restaurar tabelas
-8. **Agrupar redações revogadas** (callouts retraídos)
+5. **Normalizar artigos** (remove `Art**.**` e garante espaço após designação)
+6. **Remover indentação** (remove espaços indesejados)
+7. Converter hierarquia (transforma em headings)
+8. Restaurar tabelas
+9. **Agrupar redações revogadas** (callouts retraídos)
 
 Após o pipeline síncrono, `main.ts` executa a limpeza vault-aware de IDs não referenciados.
 
@@ -54,11 +55,17 @@ Após o pipeline síncrono, `main.ts` executa a limpeza vault-aware de IDs não 
 - Deve ocorrer ANTES de remover indentação e converter hierarquia
 - Permite que converterHierarquia processe corretamente
 
+### Normalização de Artigos
+- Remove negrito ao redor de pontos: `Art**.** 2º` → `Art. 2º`, `Art. 13**.**O` → `Art. 13. O`
+- Garante espaço entre designação do artigo e texto: `Art. 1ºFicam` → `Art. 1º Ficam`
+- Problema: Web Clipper produz formatação inconsistente nos artigos
+- Deve ocorrer DEPOIS de converter negrito e ANTES de remover indentação
+
 ### Remoção de Indentação
 - Remove espaços no início de elementos legais (Art., §, incisos, alíneas)
 - Problema: Web Clipper preserva formatação HTML com espaços indesejados
 - Preserva citações (`>`) e blocos de código (4+ espaços)
-- Deve ocorrer DEPOIS de converter negrito e ANTES de converter hierarquia
+- Deve ocorrer DEPOIS de normalizar artigos e ANTES de converter hierarquia
 
 ### Hierarquia
 - Divisões dentro de citação (`>`) são IGNORADAS (são referências a outras leis)
@@ -85,6 +92,7 @@ Após o pipeline síncrono, `main.ts` executa a limpeza vault-aware de IDs não 
 | `src/brasao.ts` | Remove brasão da República |
 | `src/tabelas.ts` | Protege/restaura tabelas |
 | `src/converter-negrito.ts` | Remove negrito de divisões hierárquicas |
+| `src/normalizar-artigos.ts` | Normaliza formatação de artigos (negrito em pontos, espaçamento) |
 | `src/remover-indentacao.ts` | Remove indentação indesejada de elementos legais |
 | `src/hierarquia.ts` | Converte divisões em headings |
 | `src/agrupar-revogadas.ts` | Agrupa redações revogadas em callouts retraídos |
@@ -105,10 +113,11 @@ processar(conteudo: string): string {
     2. protegerTabelasDoc()         // Armazena tabelas, insere placeholders
     3. processarFrontmatterDoc()    // Gera aliases
     4. converterNegritoDoc()        // **TÍTULO I** → TÍTULO I
-    5. removerIndentacaoDoc()       // Remove espaços indesejados
-    6. converterHierarquiaDoc()     // LIVRO → #, TÍTULO → ##, etc.
-    7. restaurarTabelasDoc()        // Substitui placeholders por tabelas
-    8. agruparRevogadasDoc()        // ~~revogado~~ → callout retraído
+    5. normalizarArtigosDoc()       // Art**.** 2ºO → Art. 2º O
+    6. removerIndentacaoDoc()       // Remove espaços indesejados
+    7. converterHierarquiaDoc()     // LIVRO → #, TÍTULO → ##, etc.
+    8. restaurarTabelasDoc()        // Substitui placeholders por tabelas
+    9. agruparRevogadasDoc()        // ~~revogado~~ → callout retraído
 }
 
 // Pós-processamento assíncrono (main.ts)
