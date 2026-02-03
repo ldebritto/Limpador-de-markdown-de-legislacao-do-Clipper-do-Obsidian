@@ -17,12 +17,12 @@ interface DivisaoConfig {
 }
 
 const DIVISOES: DivisaoConfig[] = [
-	{ pattern: /^(LIVRO\s+[IVXLCDM\d]+)$/i, nivel: 1 },
-	{ pattern: /^(ANEXO\s+[IVXLCDM\d]+)$/i, nivel: 1 },
-	{ pattern: /^(TÍTULO\s+[IVXLCDM\d]+)$/i, nivel: 2 },
-	{ pattern: /^(CAPÍTULO\s+[IVXLCDM\d]+)$/i, nivel: 3 },
-	{ pattern: /^(Seção\s+[IVXLCDM\d]+)$/i, nivel: 4 },
-	{ pattern: /^(Subseção\s+[IVXLCDM\d]+)$/i, nivel: 5 },
+	{ pattern: /^(LIVRO\s+[IVXLCDM\d]+(?:-[A-Z])?)$/i, nivel: 1 },
+	{ pattern: /^(ANEXO\s+[IVXLCDM\d]+(?:-[A-Z])?)$/i, nivel: 1 },
+	{ pattern: /^(TÍTULO\s+[IVXLCDM\d]+(?:-[A-Z])?)$/i, nivel: 2 },
+	{ pattern: /^(CAPÍTULO\s+[IVXLCDM\d]+(?:-[A-Z])?)$/i, nivel: 3 },
+	{ pattern: /^(Seção\s+[IVXLCDM\d]+(?:-[A-Z])?)$/i, nivel: 4 },
+	{ pattern: /^(Subseção\s+[IVXLCDM\d]+(?:-[A-Z])?)$/i, nivel: 5 },
 ];
 
 /**
@@ -55,24 +55,25 @@ export function converterHierarquia(conteudo: string): string {
 				const identificador = match[1];
 				const hashes = '#'.repeat(divisao.nivel);
 
-				// Procura o nome da divisão nas próximas linhas (pulando linhas vazias)
+				// Procura o nome da divisão nas próximas linhas
+				// Pula linhas vazias e linhas especiais (links, etc.)
 				let nome = '';
 				let proximaLinha = i + 1;
 
-				// Pula linhas vazias
-				while (proximaLinha < linhas.length && linhas[proximaLinha].trim() === '') {
-					proximaLinha++;
-				}
-
-				// Verifica se a próxima linha não-vazia é o nome da divisão
-				// (não deve ser outra divisão, artigo, ou linha especial)
-				if (proximaLinha < linhas.length) {
+				// Pula linhas vazias e linhas que são elementos especiais
+				while (proximaLinha < linhas.length) {
 					const candidato = linhas[proximaLinha].trim();
-					if (candidato && !ehDivisaoOuArtigo(candidato)) {
-						nome = candidato;
-						// Remove as linhas vazias e a linha do nome do resultado
-						i = proximaLinha;
+
+					// Para em linha vazia ou linha especial
+					if (candidato === '' || ehDivisaoOuArtigo(candidato)) {
+						proximaLinha++;
+						continue;
 					}
+
+					// Encontrou uma linha que pode ser o nome
+					nome = candidato;
+					i = proximaLinha;
+					break;
 				}
 
 				// Monta o heading
@@ -103,14 +104,15 @@ export function converterHierarquia(conteudo: string): string {
  */
 function ehDivisaoOuArtigo(linha: string): boolean {
 	const padroes = [
-		/^(LIVRO|ANEXO|TÍTULO|CAPÍTULO)\s+[IVXLCDM\d]+$/i,
-		/^(Seção|Subseção)\s+[IVXLCDM\d]+$/i,
+		/^(LIVRO|ANEXO|TÍTULO|CAPÍTULO)\s+[IVXLCDM\d]+(?:-[A-Z])?$/i,
+		/^(Seção|Subseção)\s+[IVXLCDM\d]+(?:-[A-Z])?$/i,
 		/^Art\.\s*\d+/i,
 		/^§\s*\d+/i,
 		/^Parágrafo único/i,
 		/^[IVXLCDM]+\s*[-–—]/,
 		/^[a-z]\)\s*/,
 		/^<!--/,  // comentários/placeholders
+		/^\[.+\]$/,  // linhas que são apenas links (ex: [(Incluído pela EC...)])
 	];
 
 	return padroes.some(p => p.test(linha));

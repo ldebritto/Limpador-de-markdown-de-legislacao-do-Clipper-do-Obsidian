@@ -4,6 +4,9 @@ import { removerBrasao } from './brasao';
 import { protegerTabelas, restaurarTabelas } from './tabelas';
 import { converterHierarquia } from './hierarquia';
 import { adicionarDeeplinks } from './deeplinks';
+import { removerIndentacao } from './remover-indentacao';
+import { converterNegrito } from './converter-negrito';
+import { limparDuplicatasSimples } from './limpar-duplicatas-simples';
 
 /**
  * Classe principal que orquestra o processamento do documento
@@ -29,14 +32,23 @@ export class ProcessadorLegislacao {
 		// Etapa 3: Processar frontmatter e aliases
 		resultado = this.processarFrontmatterDoc(resultado);
 
-		// Etapa 4: Converter hierarquia em headings
+		// Etapa 4: Converter hierarquia em negrito para texto normal
+		resultado = this.converterNegritoDoc(resultado);
+
+		// Etapa 5: Remover indentação indesejada
+		resultado = this.removerIndentacaoDoc(resultado);
+
+		// Etapa 6: Converter hierarquia em headings
 		resultado = this.converterHierarquiaDoc(resultado);
 
-		// Etapa 5: Adicionar IDs únicos
+		// Etapa 7: Adicionar IDs únicos
 		resultado = this.adicionarIdsDoc(resultado);
 
-		// Etapa final: Restaurar tabelas
+		// Etapa 8: Restaurar tabelas
 		resultado = this.restaurarTabelasDoc(resultado);
+
+		// Etapa 9: Limpar IDs duplicados (se houver)
+		resultado = this.limparDuplicatasSimplesDoc(resultado);
 
 		return resultado;
 	}
@@ -72,6 +84,20 @@ export class ProcessadorLegislacao {
 	}
 
 	/**
+	 * Converte elementos de hierarquia em negrito para texto normal
+	 */
+	private converterNegritoDoc(conteudo: string): string {
+		return converterNegrito(conteudo);
+	}
+
+	/**
+	 * Remove indentação indesejada de elementos legais
+	 */
+	private removerIndentacaoDoc(conteudo: string): string {
+		return removerIndentacao(conteudo);
+	}
+
+	/**
 	 * Converte a hierarquia do documento em headings Markdown
 	 */
 	private converterHierarquiaDoc(conteudo: string): string {
@@ -83,5 +109,16 @@ export class ProcessadorLegislacao {
 	 */
 	private adicionarIdsDoc(conteudo: string): string {
 		return adicionarDeeplinks(conteudo, this.idsUtilizados);
+	}
+
+	/**
+	 * Limpa IDs duplicados (versão simples para pipeline)
+	 * Mantém sempre o primeiro ID quando há múltiplos
+	 */
+	private limparDuplicatasSimplesDoc(conteudo: string): string {
+		const resultado = limparDuplicatasSimples(conteudo);
+		// Silencioso - não precisa notificar se encontrou/corrigiu duplicatas
+		// durante o processamento normal
+		return resultado.conteudo;
 	}
 }

@@ -21,6 +21,19 @@ Remove automaticamente a tabela com o brasão da República no cabeçalho.
 
 ### 3. Hierarquia em Headings
 
+O plugin converte automaticamente a hierarquia do documento em headings Markdown, **mesmo quando vem em negrito** do site original:
+
+**Entrada (do Web Clipper):**
+```markdown
+**TÍTULO I**
+**Dos Princípios Fundamentais**
+```
+
+**Saída (processada):**
+```markdown
+## TÍTULO I - Dos Princípios Fundamentais
+```
+
 | Divisão    | Nível   | Exemplo |
 |------------|---------|---------|
 | LIVRO      | `#`     | `# LIVRO I - DA ADMINISTRAÇÃO...` |
@@ -30,7 +43,10 @@ Remove automaticamente a tabela com o brasão da República no cabeçalho.
 | Seção      | `####`  | `#### Seção I - Das Competências...` |
 | Subseção   | `#####` | `##### Subseção I - ...` |
 
-**Nota:** Divisões dentro de blocos de citação (`>`) são ignoradas (referências a outras leis).
+**Recursos especiais:**
+- ✅ Suporta numeração com hífen (ex: **Seção V-A** → `#### Seção V-A`)
+- ✅ Pula linhas de referência a emendas ao buscar o nome da divisão
+- ✅ Divisões dentro de blocos de citação (`>`) são ignoradas (referências a outras leis)
 
 ### 4. Deeplinks (IDs Únicos)
 
@@ -45,9 +61,70 @@ a) nas hipóteses previstas... ^x7y8z9
 
 **Uso no Obsidian:** `[[Lcp 227#^0hnpoz]]`
 
-### 5. Proteção de Tabelas
+**Regras:**
+- ✅ IDs existentes são preservados ao reprocessar
+- ✅ Linhas tachadas (`~~texto~~`) não recebem IDs
+- ✅ Apenas elementos sem ID receberão novos IDs
+
+### 5. Remoção de Indentação Indesejada
+
+O Web Clipper às vezes preserva espaços do HTML original, criando linhas mal formatadas:
+
+```markdown
+       Art. 217. Texto do artigo...
+       § 1º Texto do parágrafo...
+```
+
+O plugin remove automaticamente essa indentação de:
+- Artigos (Art. 1º, Art. 2º, etc.)
+- Parágrafos (§ 1º, Parágrafo único, etc.)
+- Incisos (I -, II -, III -, etc.)
+- Alíneas (a), b), c), etc.)
+
+**Preserva:**
+- Citações (linhas que começam com `>`)
+- Blocos de código (4+ espaços)
+- Outras formatações intencionais
+
+### 6. Proteção de Tabelas
 
 Tabelas HTML e Markdown são preservadas intactas durante o processamento.
+
+### 7. Limpeza Automática de IDs Duplicados
+
+Durante o processamento normal, o plugin **automaticamente detecta e remove IDs duplicados**, mantendo sempre o primeiro:
+
+**Antes:**
+```markdown
+Art. 1º Texto do artigo. ^abc123 ^def456 ^ghi789
+```
+
+**Depois (automático):**
+```markdown
+Art. 1º Texto do artigo. ^abc123
+```
+
+### 8. Limpeza Inteligente de IDs (comando separado)
+
+Comando opcional para casos especiais onde você quer manter o ID que tem referências:
+
+**Exemplo de problema:**
+```markdown
+Art. 1º Texto do artigo. ^abc123 ^def456 ^ghi789
+```
+
+**Após limpeza:**
+```markdown
+Art. 1º Texto do artigo. ^abc123
+```
+
+**Como decide qual ID manter:**
+1. Varre todo o vault buscando links `[[arquivo#^id]]` para cada ID duplicado
+2. Mantém o ID que tem referências em outros arquivos
+3. Se nenhum tiver referências, mantém o primeiro
+4. Remove todos os outros IDs da linha
+
+**Relatório:** O comando gera um relatório detalhado no console mostrando quantas referências cada ID tinha.
 
 ## Status do Projeto
 
@@ -66,8 +143,25 @@ Esse projeto foi implementado usando Claude Code e se destina a uso pessoal. O c
 
 ### Uso
 
+#### Processar documento
 1. Abra um documento de legislação clipado
 2. Execute o comando: `Ctrl/Cmd + P` → "Processar documento de legislação"
+3. Pronto! O documento será:
+   - Limpo (brasão removido, indentação corrigida)
+   - Estruturado (hierarquia em headings)
+   - Indexado (IDs únicos adicionados)
+   - Corrigido (IDs duplicados removidos automaticamente)
+
+#### Comando especial: Limpar IDs duplicados com busca de referências (opcional)
+
+Use apenas se você já tem links `[[doc#^id]]` para IDs duplicados e quer preservar o ID correto:
+
+1. Abra o documento
+2. Execute: `Ctrl/Cmd + P` → "Limpar IDs duplicados (buscar referências)"
+3. O plugin busca no vault inteiro e mantém o ID que tem links
+4. Veja o console (`Ctrl/Cmd + Shift + I`) para o relatório detalhado
+
+**Nota:** Na maioria dos casos, você não precisa deste comando - o processamento normal já remove duplicatas.
 
 ## Arquitetura
 
