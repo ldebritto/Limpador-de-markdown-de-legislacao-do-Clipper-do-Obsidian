@@ -6,184 +6,141 @@ import { TFile, Vault } from 'obsidian';
 const REGEX_ID = /\^([a-z0-9]{6})/g;
 
 /**
- * Interface para representar um ID duplicado encontrado
+ * Coleta todos os IDs únicos presentes no conteúdo
  */
-interface IdDuplicado {
-	linha: string;
-	numeroLinha: number;
-	ids: string[];
-}
-
-/**
- * Encontra todas as linhas com IDs duplicados no conteúdo
- */
-export function encontrarLinhasComIdsDuplicados(conteudo: string): IdDuplicado[] {
+function coletarTodosIds(conteudo: string): string[] {
+	const ids = new Set<string>();
 	const linhas = conteudo.split('\n');
-	const duplicatas: IdDuplicado[] = [];
 
-	linhas.forEach((linha, index) => {
-		const matches = Array.from(linha.matchAll(REGEX_ID));
+	for (const linha of linhas) {
+		// Ignora linhas tachadas
+		if (linha.trimStart().startsWith('~~')) continue;
 
-		if (matches.length > 1) {
-			duplicatas.push({
-				linha,
-				numeroLinha: index + 1,
-				ids: matches.map(m => m[1])
-			});
+		for (const match of linha.matchAll(REGEX_ID)) {
+			ids.add(match[1]);
 		}
-	});
+	}
 
-	return duplicatas;
+	return Array.from(ids);
 }
 
 /**
- * Busca referências a um ID específico em todo o vault
- * Retorna o número de referências encontradas
+ * Busca quais IDs têm referências em outros arquivos do vault
+ * Lê cada arquivo uma só vez, usando um único regex para todos os IDs
  */
-async function buscarReferenciasNoVault(
+async function buscarIdsReferenciados(
 	vault: Vault,
 	nomeArquivoAtual: string,
-	id: string
-): Promise<number> {
-	const arquivos = vault.getMarkdownFiles();
-	let totalReferencias = 0;
+	ids: string[]
+): Promise<Set<string>> {
+	const idsReferenciados = new Set<string>();
 
-	// Padrão para encontrar links para o ID específico
-	// Formato: [[arquivo#^id]] ou [[#^id]]
-	const padraoLink = new RegExp(`\\[\\[(?:[^\\]]+)?#\\^${id}\\]\\]`, 'g');
+	if (ids.length === 0) return idsReferenciados;
+
+	const arquivos = vault.getMarkdownFiles();
+
+	// Regex único com alternation para todos os IDs
+	// Suporta: [[doc#^id]], [[#^id]], [[doc#^id|alias]]
+	const idsPattern = ids.map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+	const padrao = new RegExp(`\\[\\[(?:[^\\]]+)?#\\^(${idsPattern})(?:\\|[^\\]]*)?\\]\\]`, 'g');
+
+	const baseName = nomeArquivoAtual.replace('.md', '');
 
 	for (const arquivo of arquivos) {
-		// Pula o arquivo atual (só queremos referências de outros arquivos)
-		if (arquivo.basename === nomeArquivoAtual.replace('.md', '')) {
-			continue;
-		}
+		if (arquivo.basename === baseName) continue;
 
 		try {
 			const conteudo = await vault.cachedRead(arquivo);
-			const matches = conteudo.matchAll(padraoLink);
-			totalReferencias += Array.from(matches).length;
+			for (const match of conteudo.matchAll(padrao)) {
+				idsReferenciados.add(match[1]);
+			}
 		} catch (erro) {
 			console.error(`Erro ao ler arquivo ${arquivo.path}:`, erro);
 		}
+
+		// Se já encontrou todos, pode parar
+		if (idsReferenciados.size === ids.length) break;
 	}
 
-	return totalReferencias;
+	return idsReferenciados;
 }
 
 /**
- * Decide qual ID manter baseado em referências no vault
- * Retorna o ID que deve ser mantido
+ * Remove IDs não referenciados de uma linha
+ * Se a linha tem múltiplos IDs, mantém apenas os referenciados
+ * Se nenhum é referenciado, remove todos
  */
-async function decidirIdParaManter(
-	vault: Vault,
-	nomeArquivo: string,
-	ids: string[]
-): Promise<string> {
-	// Busca referências para cada ID
-	const referencias: Map<string, number> = new Map();
-
-	for (const id of ids) {
-		const count = await buscarReferenciasNoVault(vault, nomeArquivo, id);
-		referencias.set(id, count);
-	}
-
-	// Encontra o ID com mais referências
-	let idComMaisReferencias = ids[0];
-	let maxReferencias = referencias.get(ids[0]) || 0;
-
-	for (const id of ids) {
-		const count = referencias.get(id) || 0;
-		if (count > maxReferencias) {
-			maxReferencias = count;
-			idComMaisReferencias = id;
-		}
-	}
-
-	return idComMaisReferencias;
-}
-
-/**
- * Remove IDs duplicados de uma linha, mantendo apenas o ID especificado
- */
-function removerIdsDuplicados(linha: string, idParaManter: string): string {
-	// Encontra todos os IDs na linha
+function limparIdsNaLinha(linha: string, idsReferenciados: Set<string>): string {
 	const matches = Array.from(linha.matchAll(REGEX_ID));
+	if (matches.length === 0) return linha;
 
-	if (matches.length <= 1) {
-		return linha; // Nada a fazer
-	}
+	// Encontra quais IDs desta linha são referenciados
+	const idsParaManter = matches
+		.map(m => m[1])
+		.filter(id => idsReferenciados.has(id));
 
-	// Remove todos os IDs
+	// Remove todos os IDs da linha
 	let resultado = linha.replace(REGEX_ID, '').trim();
 
-	// Adiciona de volta apenas o ID que deve ser mantido
-	resultado = `${resultado} ^${idParaManter}`;
+	// Adiciona de volta apenas os referenciados
+	for (const id of idsParaManter) {
+		resultado = `${resultado} ^${id}`;
+	}
 
 	return resultado;
 }
 
 /**
- * Limpa IDs duplicados em um documento
+ * Remove IDs não referenciados de um documento
  *
- * Para cada linha com múltiplos IDs:
- * 1. Verifica se há referências no vault para algum desses IDs
- * 2. Mantém o ID que tem referências, ou o primeiro se nenhum tiver
- * 3. Remove os IDs duplicados
+ * Para cada ID presente no documento:
+ * 1. Verifica se há referências em outros arquivos do vault
+ * 2. Mantém apenas IDs que têm referências
+ * 3. Remove todos os outros
  *
  * @param vault Instância do Vault do Obsidian
  * @param arquivo Arquivo sendo processado
  * @param conteudo Conteúdo do arquivo
  * @returns Objeto com conteúdo limpo e relatório de alterações
  */
-export async function limparIdsDuplicados(
+export async function removerIdsNaoReferenciados(
 	vault: Vault,
 	arquivo: TFile,
 	conteudo: string
 ): Promise<{ conteudo: string; relatorio: string[] }> {
-	const duplicatas = encontrarLinhasComIdsDuplicados(conteudo);
+	const todosIds = coletarTodosIds(conteudo);
 
-	if (duplicatas.length === 0) {
-		return {
-			conteudo,
-			relatorio: ['Nenhum ID duplicado encontrado.']
-		};
+	if (todosIds.length === 0) {
+		return { conteudo, relatorio: [] };
 	}
 
+	const idsReferenciados = await buscarIdsReferenciados(
+		vault, arquivo.name, todosIds
+	);
+
+	const idsParaRemover = todosIds.filter(id => !idsReferenciados.has(id));
+
+	if (idsParaRemover.length === 0) {
+		return { conteudo, relatorio: [] };
+	}
+
+	// Processar linha por linha
 	const linhas = conteudo.split('\n');
+	const resultado = linhas.map(linha => {
+		if (linha.trimStart().startsWith('~~')) return linha;
+		return limparIdsNaLinha(linha, idsReferenciados);
+	});
+
 	const relatorio: string[] = [];
-
-	relatorio.push(`Encontradas ${duplicatas.length} linha(s) com IDs duplicados:\n`);
-
-	for (const dup of duplicatas) {
-		// Decide qual ID manter
-		const idParaManter = await decidirIdParaManter(vault, arquivo.name, dup.ids);
-
-		// Verifica quantas referências cada ID tem
-		const refsPromises = dup.ids.map(async id => {
-			const count = await buscarReferenciasNoVault(vault, arquivo.name, id);
-			return { id, count };
-		});
-		const refs = await Promise.all(refsPromises);
-
-		// Remove IDs duplicados da linha
-		linhas[dup.numeroLinha - 1] = removerIdsDuplicados(
-			dup.linha,
-			idParaManter
-		);
-
-		// Adiciona ao relatório
-		relatorio.push(`Linha ${dup.numeroLinha}:`);
-		relatorio.push(`  IDs encontrados: ${dup.ids.map(id => `^${id}`).join(', ')}`);
-		refs.forEach(r => {
-			relatorio.push(`    ^${r.id}: ${r.count} referência(s)`);
-		});
-		relatorio.push(`  ✓ Mantido: ^${idParaManter}`);
-		relatorio.push(`  ✗ Removidos: ${dup.ids.filter(id => id !== idParaManter).map(id => `^${id}`).join(', ')}`);
-		relatorio.push('');
+	relatorio.push(`IDs no documento: ${todosIds.length}`);
+	relatorio.push(`IDs com referências (preservados): ${idsReferenciados.size}`);
+	if (idsReferenciados.size > 0) {
+		relatorio.push(`  ${Array.from(idsReferenciados).map(id => `^${id}`).join(', ')}`);
 	}
+	relatorio.push(`IDs sem referências (removidos): ${idsParaRemover.length}`);
 
 	return {
-		conteudo: linhas.join('\n'),
+		conteudo: resultado.join('\n'),
 		relatorio
 	};
 }

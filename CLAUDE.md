@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Este é um plugin Obsidian para limpar documentos de legislação brasileira clipados. O plugin processa markdown para adicionar aliases automáticos, remover brasão, converter hierarquia em headings, adicionar deeplinks e proteger tabelas durante o processamento.
+Este é um plugin Obsidian para limpar documentos de legislação brasileira clipados. O plugin processa markdown para adicionar aliases automáticos, remover brasão, converter hierarquia em headings, remover IDs não referenciados e proteger tabelas durante o processamento.
 
 ## Decisões de Projeto (NÃO ALTERAR)
 
@@ -21,9 +21,26 @@ A ordem em `processador.ts` é intencional:
 4. **Converter negrito** (remove `**TÍTULO I**` → `TÍTULO I`)
 5. **Remover indentação** (remove espaços indesejados)
 6. Converter hierarquia (transforma em headings)
-7. Adicionar deeplinks
-8. Restaurar tabelas
-9. **Limpar duplicatas** (remove IDs duplicados mantendo primeiro)
+7. Restaurar tabelas
+8. **Agrupar redações revogadas** (callouts retraídos)
+
+Após o pipeline síncrono, `main.ts` executa a limpeza vault-aware de IDs não referenciados.
+
+### Redações Revogadas
+- Linhas tachadas (`~~texto~~`) são agrupadas em callouts retraídos: `> [!Quote]- Redação revogada`
+- Linhas tachadas consecutivas (separadas apenas por linhas vazias) formam um único callout
+- Indentação pré-existente é removida ao entrar no callout
+- Linhas parcialmente tachadas (e.g. `a) ~~texto~~`) NÃO são afetadas
+- Linhas dentro de citação (`> ~~texto~~`) NÃO são afetadas
+- Deve ocorrer DEPOIS de restaurar tabelas
+
+### IDs / Deeplinks
+- **Não são adicionados automaticamente** — o plugin não gera IDs novos
+- IDs existentes no formato `^abc123` (6 chars alfanuméricos lowercase) são preservados **apenas se referenciados** em outros arquivos do vault (`[[doc#^id]]` ou `[[doc#^id|alias]]`)
+- IDs sem nenhuma referência são removidos durante o processamento
+- Linhas tachadas (`~~`) são ignoradas na limpeza
+- A busca de referências lê cada arquivo do vault uma só vez, usando um regex com alternation para performance O(vault_files)
+- A limpeza ocorre **depois** de restaurar tabelas (para processar o documento completo)
 
 ### Proteção de Tabelas
 - Usa placeholders temporários `<!--PROTECTED_TABLE_uuid-->`
@@ -56,48 +73,33 @@ A ordem em `processador.ts` é intencional:
   - Seção → `####` (h4)
   - Subseção → `#####` (h5)
 
-### Deeplinks
-- IDs de 6 caracteres alfanuméricos (lowercase)
-- Aplicados a: Art., §, Parágrafo único, incisos (I, II...), alíneas (a, b...)
-- Formato: `^abc123` no final da linha
-- Usa `idsUtilizados` Set para garantir unicidade entre tabelas e deeplinks
-- **Preserva IDs existentes**: Se um elemento já tiver um ID, ele não é duplicado
-- **Ignora linhas tachadas**: Linhas que começam com `~~` (redações revogadas) não recebem IDs
-- Primeiro coleta todos os IDs existentes, depois adiciona novos apenas onde necessário
-
-### Limpeza de Duplicatas
-- **Automática no pipeline**: Remove IDs duplicados mantendo sempre o primeiro
-- **Versão simples** (`limpar-duplicatas-simples.ts`): Usada no processamento normal, rápida
-- **Versão inteligente** (`limpar-duplicatas.ts`): Comando separado, busca referências no vault
-- Executada DEPOIS de restaurar tabelas (para processar todo o documento final)
-
 ## Arquitetura
 
 ### Arquivos Principais
 
 | Arquivo | Função |
 |---------|--------|
-| `src/main.ts` | Entry point do plugin Obsidian - registra comandos |
-| `src/processador.ts` | Orquestra todas as etapas |
+| `src/main.ts` | Entry point do plugin Obsidian - registra comando e orquestra limpeza de IDs |
+| `src/processador.ts` | Orquestra as etapas síncronas do pipeline |
 | `src/frontmatter.ts` | Gera aliases automáticos |
 | `src/brasao.ts` | Remove brasão da República |
 | `src/tabelas.ts` | Protege/restaura tabelas |
 | `src/converter-negrito.ts` | Remove negrito de divisões hierárquicas |
 | `src/remover-indentacao.ts` | Remove indentação indesejada de elementos legais |
 | `src/hierarquia.ts` | Converte divisões em headings |
-| `src/deeplinks.ts` | Adiciona IDs para links de bloco |
-| `src/limpar-duplicatas-simples.ts` | Remove IDs duplicados (versão rápida) |
-| `src/limpar-duplicatas.ts` | Remove IDs duplicados (versão inteligente com busca) |
-| `src/utils.ts` | Funções utilitárias (geração de IDs) |
+| `src/agrupar-revogadas.ts` | Agrupa redações revogadas em callouts retraídos |
+| `src/limpar-duplicatas.ts` | Remove IDs não referenciados (busca no vault) |
+| `src/utils.ts` | Funções utilitárias (geração de IDs para placeholders) |
 | `src/types.ts` | Interfaces TypeScript |
 
 ### Pipeline de Processamento
 
 A classe `ProcessadorLegislacao` mantém dois estados:
 - `tabelasProtegidas: TabelasProtegidas` - Mapa de placeholder → conteúdo original da tabela
-- `idsUtilizados: Set<string>` - IDs usados (compartilhado entre proteção de tabelas e deeplinks)
+- `idsUtilizados: Set<string>` - IDs usados para placeholders de tabelas
 
 ```typescript
+// Pipeline síncrono (processador.ts)
 processar(conteudo: string): string {
     1. removerBrasaoDoc()           // Remove tabela do cabeçalho
     2. protegerTabelasDoc()         // Armazena tabelas, insere placeholders
@@ -105,28 +107,23 @@ processar(conteudo: string): string {
     4. converterNegritoDoc()        // **TÍTULO I** → TÍTULO I
     5. removerIndentacaoDoc()       // Remove espaços indesejados
     6. converterHierarquiaDoc()     // LIVRO → #, TÍTULO → ##, etc.
-    7. adicionarIdsDoc()            // Adiciona IDs ^abc123
-    8. restaurarTabelasDoc()        // Substitui placeholders por tabelas
-    9. limparDuplicatasSimplesDoc() // Remove IDs duplicados (mantém primeiro)
+    7. restaurarTabelasDoc()        // Substitui placeholders por tabelas
+    8. agruparRevogadasDoc()        // ~~revogado~~ → callout retraído
 }
+
+// Pós-processamento assíncrono (main.ts)
+removerIdsNaoReferenciados()       // Remove IDs sem referências no vault
 ```
 
-## Comandos do Plugin
+## Comando do Plugin
 
-O plugin oferece dois comandos no Obsidian:
+O plugin oferece um comando no Obsidian:
 
-1. **"Processar documento de legislação"** - Comando principal
-   - Aplica todas as transformações (aliases, remoção de brasão, hierarquia, deeplinks, etc.)
-   - **Automaticamente remove IDs duplicados** mantendo o primeiro
-   - Use este comando para documentos novos E reprocessamento de documentos antigos
-
-2. **"Limpar IDs duplicados (buscar referências)"** - Comando avançado/opcional
-   - Apenas para casos especiais onde você tem links existentes `[[doc#^id]]`
-   - Detecta linhas como: `Art. 1º texto ^abc123 ^def456`
-   - Busca referências no vault inteiro para cada ID
-   - Mantém o ID que tem links em outros arquivos
-   - Gera relatório detalhado no console
-   - **Raramente necessário** - o comando principal já remove duplicatas
+**"Processar documento de legislação"** - Comando principal
+- Aplica todas as transformações (aliases, remoção de brasão, hierarquia, etc.)
+- Remove IDs (`^abc123`) que não têm referências em outros arquivos do vault
+- Preserva IDs que são referenciados (`[[doc#^id]]` ou `[[doc#^id|alias]]`)
+- Loga relatório de IDs removidos/preservados no console
 
 ## Comandos de Desenvolvimento
 

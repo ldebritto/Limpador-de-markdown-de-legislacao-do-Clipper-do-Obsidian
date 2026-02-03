@@ -3,10 +3,9 @@ import { processarFrontmatter } from './frontmatter';
 import { removerBrasao } from './brasao';
 import { protegerTabelas, restaurarTabelas } from './tabelas';
 import { converterHierarquia } from './hierarquia';
-import { adicionarDeeplinks } from './deeplinks';
 import { removerIndentacao } from './remover-indentacao';
 import { converterNegrito } from './converter-negrito';
-import { limparDuplicatasSimples } from './limpar-duplicatas-simples';
+import { agruparRedacoesRevogadas } from './agrupar-revogadas';
 
 /**
  * Classe principal que orquestra o processamento do documento
@@ -41,14 +40,11 @@ export class ProcessadorLegislacao {
 		// Etapa 6: Converter hierarquia em headings
 		resultado = this.converterHierarquiaDoc(resultado);
 
-		// Etapa 7: Adicionar IDs únicos
-		resultado = this.adicionarIdsDoc(resultado);
-
-		// Etapa 8: Restaurar tabelas
+		// Etapa 7: Restaurar tabelas
 		resultado = this.restaurarTabelasDoc(resultado);
 
-		// Etapa 9: Limpar IDs duplicados (se houver)
-		resultado = this.limparDuplicatasSimplesDoc(resultado);
+		// Etapa 8: Agrupar redações revogadas em callouts retraídos
+		resultado = this.agruparRevogadasDoc(resultado);
 
 		return resultado;
 	}
@@ -105,20 +101,9 @@ export class ProcessadorLegislacao {
 	}
 
 	/**
-	 * Adiciona IDs únicos para deeplinks
+	 * Agrupa redações revogadas (linhas tachadas) em callouts retraídos
 	 */
-	private adicionarIdsDoc(conteudo: string): string {
-		return adicionarDeeplinks(conteudo, this.idsUtilizados);
-	}
-
-	/**
-	 * Limpa IDs duplicados (versão simples para pipeline)
-	 * Mantém sempre o primeiro ID quando há múltiplos
-	 */
-	private limparDuplicatasSimplesDoc(conteudo: string): string {
-		const resultado = limparDuplicatasSimples(conteudo);
-		// Silencioso - não precisa notificar se encontrou/corrigiu duplicatas
-		// durante o processamento normal
-		return resultado.conteudo;
+	private agruparRevogadasDoc(conteudo: string): string {
+		return agruparRedacoesRevogadas(conteudo);
 	}
 }

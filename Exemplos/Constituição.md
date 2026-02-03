@@ -4420,7 +4420,9 @@ I - não incide sobre a transmissão de bens ou direitos incorporados ao patrim�
 II - compete ao Município da situação do bem. ^xu22qa
 
 ~~§ 3º O imposto previsto no inciso III, não exclui a incidência do imposto estadual previsto no art. 155, I, b, sobre a mesma operação.  
-~~~~§ 3.º Em relação ao imposto previsto no inciso III, cabe à lei complementar: [(Redação dada pela Emenda Constitucional nº 3, de 1993)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc03.htm#art1)~~
+
+
+~~§ 3.º Em relação ao imposto previsto no inciso III, cabe à lei complementar: [(Redação dada pela Emenda Constitucional nº 3, de 1993)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc03.htm#art1)~~
 
 § 3º Em relação ao imposto previsto no inciso III do *caput* deste artigo, cabe à lei complementar: [(Redação dada pela Emenda Constitucional nº 37, de 2002)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc37.htm#art2) [(Vide Emenda Constitucional nº 132, de 2023)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc132.htm#art22) [Vigência](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc132.htm#art23) ^sdr66d
 
@@ -4428,7 +4430,7 @@ II - compete ao Município da situação do bem. ^xu22qa
 
 I - fixar as suas alíquotas máximas e mínimas; [(Redação dada pela Emenda Constitucional nº 37, de 2002)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc37.htm#art2) ^q2lp3c
 
-II - excluir da sua incidência exportações de serviços para o exterior. [(Incluído pela Emenda Constitucional nº 3, de 1993)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc03.htm#art2) ^c5v77s
+II - excluir da sua incidência exportações de serviços para o exterior. [(Incluído pela Emenda Constitucional nº 3, de 1993)](https://www.iplanalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc03.htm#art2) ^c5v77s
 
 III - regular a forma e as condições como isenções, incentivos e benefícios fiscais serão concedidos e revogados. [(Incluído pela Emenda Constitucional nº 3, de 1993)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc03.htm#art2) ^engzw3
 
@@ -4438,9 +4440,7 @@ III - regular a forma e as condições como isenções, incentivos e benefícios
 
 ~~II - excluir da incidência do imposto previsto no inciso IV exportações de serviços para o exterior.~~ [(Revogado pela Emenda Constitucional nº 3, de 1993)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc03.htm#art6)
 
-**Seção V-A**
-
-[(Incluído pela Emenda Constitucional nº 132, de 2023)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc132.htm#art1)
+#### Seção V-A - [(Incluído pela Emenda Constitucional nº 132, de 2023)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc132.htm#art1)
 
 Do Imposto de Competência Compartilhada entre Estados,Distrito Federal e Municípios
 
@@ -6660,8 +6660,7 @@ In Memoriam: *Alair Ferreira - Antônio Farias - Fábio Lucena - Norberto Schwan
 
 [Este texto não substitui o publicado no D.O.U. de 5.10.1988](https://www.planalto.gov.br/ccivil_03/constituicao/DOUconstituicao88.pdf) .
 
-> **ATO DAS DISPOSIÇÕES CONSTITUCIONAIS TRANSITÓRIAS**
-> 
+# **ATO DAS DISPOSIÇÕES CONSTITUCIONAIS TRANSITÓRIAS**
 > [(Vide Emenda Constitucional nº 132, de 2023)](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc132.htm#art5) [Vigência](https://www.planalto.gov.br/ccivil_03/constituicao/Emendas/Emc/emc132.htm#art23)
 
 Art. 1º. O Presidente da República, o Presidente do Supremo Tribunal Federal e os membros do Congresso Nacional prestarão o compromisso de manter, defender e cumprir a Constituição, no ato e na data de sua promulgação. ^5i1qo3
